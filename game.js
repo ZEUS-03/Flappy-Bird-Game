@@ -18,6 +18,28 @@ const gameState = {
   over: 2,
 };
 
+const score = {
+  best: parseInt(localStorage.getItem("best")) || 0,
+  value: 0,
+  draw: function () {
+    ctx.fillStyle = "#FFF";
+    ctx.strokeStyle = "#000";
+
+    if (gameState.current == gameState.game) {
+      ctx.font = "35px Teko";
+      ctx.lineWidth = 2;
+      ctx.fillText(this.value, cvs.width / 2, 50);
+      ctx.strokeText(this.value, cvs.width / 2, 50);
+    } else if (gameState.current == gameState.over) {
+      ctx.font = "25px Teko";
+      ctx.fillText(this.value, 225, 186);
+      ctx.strokeText(this.value, 225, 186);
+      ctx.fillText(this.best, 225, 228);
+      ctx.strokeText(this.best, 225, 228);
+    }
+  },
+};
+
 // changing states
 cvs.addEventListener("click", (e) => {
   switch (gameState.current) {
@@ -71,6 +93,103 @@ const bg = {
 
 // FOREGROUND
 
+const pipes = {
+  position: [],
+
+  top: {
+    sX: 553,
+    sY: 0,
+  },
+  bottom: {
+    sX: 502,
+    sY: 0,
+  },
+
+  w: 53,
+  h: 400,
+  gap: 85,
+  maxYPos: -150,
+  dx: 2,
+
+  draw: function () {
+    for (let i = 0; i < this.position.length; i++) {
+      let p = this.position[i];
+
+      let topYPos = p.y;
+      let bottomYPos = p.y + this.h + this.gap;
+
+      // top pipe
+      ctx.drawImage(
+        sprite,
+        this.top.sX,
+        this.top.sY,
+        this.w,
+        this.h,
+        p.x,
+        topYPos,
+        this.w,
+        this.h
+      );
+
+      // bottom pipe
+      ctx.drawImage(
+        sprite,
+        this.bottom.sX,
+        this.bottom.sY,
+        this.w,
+        this.h,
+        p.x,
+        bottomYPos,
+        this.w,
+        this.h
+      );
+    }
+  },
+
+  update: function () {
+    if (gameState.current !== gameState.game) return;
+
+    if (frames % 100 == 0) {
+      this.position.push({
+        x: cvs.width,
+        y: this.maxYPos * (Math.random() + 1),
+      });
+    }
+    for (let i = 0; i < this.position.length; i++) {
+      let p = this.position[i];
+
+      let bottomPipeYPos = p.y + this.h + this.gap;
+
+      p.x -= this.dx;
+
+      // if the pipes go beyond canvas, we delete them from the array
+      if (p.x + this.w <= 0) {
+        this.position.shift();
+        score.value += 1;
+        score.best = Math.max(score.value, score.best);
+        localStorage.setItem("best", score.best);
+      }
+
+      // COLLISON DETECTION
+      if (
+        bird.x + bird.radius > p.x &&
+        bird.x + bird.radius < p.x + this.w &&
+        bird.y + bird.radius > p.y &&
+        bird.y - bird.radius < p.y + this.h
+      ) {
+        gameState.current = gameState.over;
+      }
+      if (
+        bird.x + bird.radius > p.x &&
+        bird.x + bird.radius < p.x + this.w &&
+        bird.y + bird.radius > bottomPipeYPos &&
+        bird.y - bird.radius < bottomPipeYPos + this.h
+      ) {
+        gameState.current = gameState.over;
+      }
+    }
+  },
+};
 const fg = {
   sX: 276,
   sY: 0,
@@ -144,6 +263,7 @@ const getReady = {
 };
 
 // GAME OVER MESSAGE
+
 const gameOver = {
   sX: 175,
   sY: 228,
@@ -182,6 +302,8 @@ const bird = {
   y: 150,
   w: 32,
   h: 26,
+
+  radius: 12,
 
   frame: 0,
 
@@ -247,16 +369,19 @@ function draw() {
   ctx.fillStyle = "#70c5ce"; //giving color to the canvas rectangle
   ctx.fillRect(0, 0, cvs.width, cvs.height); // filling canvas with a rectangle
   bg.draw();
+  pipes.draw();
   fg.draw();
   bird.draw();
   getReady.draw();
   gameOver.draw();
+  score.draw();
 }
 
 // UPDATE FUNCTION
 function update() {
   bird.update();
   fg.update();
+  pipes.update();
 }
 
 // LOOP FUNCTION
